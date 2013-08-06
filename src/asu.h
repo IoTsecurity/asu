@@ -67,7 +67,7 @@
 #define SESSION_KEY_NEG_RESP    (9)
 #define SESSION_KEY_NEG_ACK     (10)
 
-#define REQUEST_CERTIFICATE       (11) //client send to the server,for requesting a new certificate,i.e a certificate request
+#define CERTIFICATE_SIGN_REQU     (11) //client send to the server,for requesting a new certificate,i.e a certificate request
 #define ISSUE_CERTIFICATE         (12) //server send to the client,after signing the new certificate
 #define SEARCH_CERTIFICATE        (13) //client send to the server,for searching for a certificate
 #define SEARCH_CERTIFICATE_RESULT (14) //server send to the client,after searching in the certificate database,
@@ -87,7 +87,8 @@ typedef unsigned long  DWORD;
 #define TRUE 1
 #define AE_OK_ASUE_OK 2     //AE和ASUE证书验证都正确
 #define AE_OK_ASUE_ERROR 3  //AE证书验证正确，ASUE证书验证错误
-#define AE_ERROR_ASUE_OK 4  //AE证书验证错误，AE证书验证正确
+#define AE_ERROR_ASUE_OK 4  //AE证书验证错误，ASUE证书验证正确
+#define AE_ERROR_ASUE_ERROR 5  //AE证书验证错误，ASUE证书验证错误
 
 /* WAI协议分组基本格式包头 */
 typedef struct _packet_head
@@ -230,6 +231,12 @@ typedef struct _certificate_auth_resp
 }certificate_auth_resp;
 
 
+/* 证书签发请求分组 */
+typedef struct _certificate_sign_requ
+{
+	packet_head       wai_packet_head;                                   /* WAI协议分组基本格式包头 */
+    BYTE              certificate_sign_requ_buffer[MAX_X509_DATA_LEN];   /* 证书签发请求buffer数组 */
+}certificate_sign_requ;
 
 
 #endif /* ASU_H_ */
