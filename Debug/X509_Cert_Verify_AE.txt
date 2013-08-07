@@ -1,1 +1,1 @@
-./demoCA/newcerts/usercert2.pem: OK
+./cert/usercert2.pem: OK

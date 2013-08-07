@@ -36,12 +36,16 @@
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.debug.524977511" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.debug">
 								<option id="gnu.c.link.option.paths.1537588075" name="Library search path (-L)" superClass="gnu.c.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="usr/local/openssl/lib"/>
+									<listOptionValue builtIn="false" value="/usr/local/openssl/lib"/>
 								</option>
 								<option id="gnu.c.link.option.libs.941005966" name="Libraries (-l)" superClass="gnu.c.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="ssl"/>
 									<listOptionValue builtIn="false" value="crypto"/>
 									<listOptionValue builtIn="false" value="pthread"/>
+								</option>
+								<option id="gnu.c.link.option.other.1397097280" name="Other options (-Xlinker [option])" superClass="gnu.c.link.option.other" valueType="stringList">
+									<listOptionValue builtIn="false" value="-R/usr/local/lib"/>
+									<listOptionValue builtIn="false" value="-ldl"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.linker.input.970022" superClass="cdt.managedbuild.tool.gnu.c.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>

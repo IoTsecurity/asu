@@ -29,7 +29,7 @@ all: asu
 asu: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc -Lusr/local/openssl/lib -o "asu" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L/usr/local/openssl/lib -Xlinker -R/usr/local/lib -Xlinker -ldl -o "asu" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 

@@ -38,7 +38,8 @@ src/asu.d src/asu.o: ../src/asu.c ../src/asu.h \
  /usr/local/openssl/include/openssl/dtls1.h \
  /usr/local/openssl/include/openssl/pqueue.h \
  /usr/local/openssl/include/openssl/ssl23.h \
- /usr/local/openssl/include/openssl/err.h
+ /usr/local/openssl/include/openssl/err.h \
+ /usr/local/openssl/include/openssl/rand.h
 
 ../src/asu.h:
 
@@ -121,3 +122,5 @@ src/asu.d src/asu.o: ../src/asu.c ../src/asu.h \
 /usr/local/openssl/include/openssl/ssl23.h:
 
 /usr/local/openssl/include/openssl/err.h:
+
+/usr/local/openssl/include/openssl/rand.h:

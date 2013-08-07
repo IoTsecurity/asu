@@ -10,21 +10,21 @@
 
 #include "asu.h"
 
-/* define HOME to be dir for key and cert files... */
-#define HOME "./"
-/* Make these what you want for cert & key files */
-#define CACERTF  HOME "demoCA/cacert.pem"
-#define CAKEYF  HOME "demoCA/private/cakey.pem"
-#define SERVERCERTF  HOME "demoCA/newcerts/usercert1.pem"
-#define SERVERKEYF  HOME "userkey1.pem"
+///* define HOME to be dir for key and cert files... */
+//#define HOME "./"
+///* Make these what you want for cert & key files */
+//#define CACERTF  HOME "newcerts/cacert.pem"
+//#define CAKEYF  HOME "private/cakey.pem"
+//#define ASUECERTF  HOME "newcerts/usercert1.pem"
+//#define AECERTF  HOME "newcerts/usercert2.pem"
 
 #define CHK_NULL(x) if ((x)==NULL) exit (1)
 #define CHK_ERR(err,s) if ((err)==-1) { perror(s); exit(1); }
 #define CHK_SSL(err) if ((err)==-1) { ERR_print_errors_fp(stderr); exit(2); }
 
-#define PrivKey_PWD "111111" //server private key password
 
-int count=0;
+
+static int count=0;  //作用：测试asu运行fill_certificate_auth_resp_packet函数的次数
 
 typedef struct user
 {
@@ -208,6 +208,48 @@ int init_server_socket()
     return server_socket;
 }
 
+
+int send_to_peer(int new_server_socket, BYTE *send_buffer, int send_len)
+{
+
+	int length = send(new_server_socket,send_buffer,send_len,0);
+	printf("---- send %d bytes -----\n",length);
+
+    if(length <0)
+    {
+        printf("Socket Send Data Failed Or Closed\n");
+        close(new_server_socket);
+        return FALSE;
+    }
+	else
+		return TRUE;
+}
+
+int recv_from_peer(int new_server_socket, BYTE *recv_buffer, int recv_len)
+{
+	int length = recv(new_server_socket,recv_buffer, recv_len,0);
+	if (length < 0)
+	{
+		printf("Receive Data From Server Failed\n");
+		return FALSE;
+	}else if(length < recv_len)
+	{
+		printf("Receive data from server less than required.\n");
+		return FALSE;
+	}else if(length > recv_len)
+	{
+		printf("Receive data from server more than required.\n");
+		return FALSE;
+	}
+	else
+	{
+		printf("receive data succeed, %d bytes.\n",length);
+		return TRUE;
+	}
+
+}
+
+
 /*************************************************
 
 Function:    // getpubkeyfromcert
@@ -231,9 +273,9 @@ EVP_PKEY *getpubkeyfromcert(int certnum)
 	char certname[60];
 	memset(certname, '\0', sizeof(certname)); //初始化certname,以免后面写如乱码到文件中
 	if (certnum == 0)
-		sprintf(certname, "./demoCA/cacert.pem"); //./demoCA/
+		sprintf(certname, "./cacerts/cacert.pem");
 	else
-		sprintf(certname, "./demoCA/newcerts/usercert%d.pem", certnum);
+		sprintf(certname, "./cert/usercert%d.pem", certnum);
 
 	BIO_read_filename(key,certname);
 	if (!PEM_read_bio_X509(key, &Cert, 0, NULL))
@@ -295,7 +337,8 @@ BOOL verify_sign(BYTE *input,int sign_input_len,BYTE * sign_value, unsigned int 
 		printf("EVP_Verify err\n");
 //		EVP_PKEY_free(pubKey);//pubkey只是作为参数传进来，其清理内存留给其调用者完成，这一点与参考程序不同
 		return FALSE;
-	} else
+	}
+	else
 	{
 		printf("验证签名正确!!!\n");
 	}
@@ -332,7 +375,7 @@ int X509_Cert_Verify(int aecertnum, int asuecertnum)
 	//验证AE证书
 	memset(tempcmd, '\0', sizeof(tempcmd)); //初始化buf,以免后面写如乱码到文件中
 	sprintf(tempcmd,
-			"openssl verify -CAfile ./demoCA/cacert.pem -verbose ./demoCA/newcerts/usercert%d.pem > X509_Cert_Verify_AE.txt",
+			"openssl verify -CAfile ./cacert/cacert.pem -verbose ./cert/usercert%d.pem > X509_Cert_Verify_AE.txt",
 			aecertnum);
 
 	system(tempcmd);
@@ -356,7 +399,7 @@ int X509_Cert_Verify(int aecertnum, int asuecertnum)
 	//验证ASUE证书
 	memset(tempcmd, '\0', sizeof(tempcmd)); //初始化buf,以免后面写如乱码到文件中
 	sprintf(tempcmd,
-			"openssl verify -CAfile ./demoCA/cacert.pem -verbose ./demoCA/newcerts/usercert%d.pem > X509_Cert_Verify_ASUE.txt",
+			"openssl verify -CAfile ./cacert/cacert.pem -verbose ./cert/usercert%d.pem > X509_Cert_Verify_ASUE.txt",
 			asuecertnum);
 	system(tempcmd);
 	memset(tempcmd, '\0', sizeof(tempcmd)); //初始化buf,以免后面写如乱码到文件中
@@ -368,15 +411,15 @@ int X509_Cert_Verify(int aecertnum, int asuecertnum)
 	fread(tempcmd, 1, 200, fp);
 	pasue = strstr(tempcmd, ERRresult);
 	if (NULL == pasue)
-		printf("验证ASUE证书正确！\n");
+		printf("ASU验证ASUE证书正确！\n");
 	else
 	{
-		printf("证书ASUE验证错误！\n");
+		printf("ASU证书ASUE验证错误！\n");
 		printf("错误信息：%s", tempcmd);
 	}
 	fclose(fp);
 
-	printf("verify end!!!\n");
+	printf("ASU验证AE、ASUE证书结束!!!\n");
 
 	if ((NULL==pae) && (NULL==pasue))
 		return AE_OK_ASUE_OK;      //AE和ASUE证书验证都正确
@@ -397,24 +440,29 @@ Called By:   // fill_certificate_auth_resp_packet
 Input:	     //	无
 Output:      //	CA(驻留在ASU中)的私钥
 Return:      // EVP_PKEY *privKey
-Others:      // 该函数只是在本工程中为asu.c专用，即提取CA(驻留在ASU中)的私钥，如需提取其他私钥，还有待于将打开文件的目录及文件名做点修改
+Others:      //
 
 *************************************************/
 
-EVP_PKEY * getprivkeyfromprivkeyfile()
+EVP_PKEY * getprivkeyfromprivkeyfile(int userID)
 {
 	EVP_PKEY * privKey;
 	FILE* fp;
 	RSA* rsa;
 
-	fp = fopen("./demoCA/private/cakey.pem", "r");
+	char keyname[40];
+
+	if (userID == 0)
+		sprintf(keyname, "./private/cakey.pem");                   //asu密钥文件
+	else
+		sprintf(keyname, "./private/userkey%d.pem", userID);       //ae或asue密钥文件
+	fp = fopen(keyname, "r");
 
 	if (NULL == fp)
 	{
-		fprintf(stderr, "Unable to open %s for RSA priv params\n", "./demoCA/pricate/cakey.pem");
+		fprintf(stderr, "Unable to open %s for RSA priv params\n", "./pricate/cakey.pem");
 		return NULL;
 	}
-	printf("123456");
 
 	rsa = RSA_new();
 	if ((rsa = PEM_read_RSAPrivateKey(fp, &rsa, NULL, NULL)) == NULL)
@@ -422,13 +470,12 @@ EVP_PKEY * getprivkeyfromprivkeyfile()
 		fprintf(stderr, "Unable to read private key parameters\n");
 		return NULL;
 	}
-	printf("654321");
 	fclose(fp);
 
 	// print
-	printf("Content of CA's Private key PEM file\n");
-	RSA_print_fp(stdout, rsa, 0);
-	printf("\n");
+//	printf("Content of CA's Private key PEM file\n");
+//	RSA_print_fp(stdout, rsa, 0);
+//	printf("\n");
 
 	privKey = EVP_PKEY_new();
 	if (EVP_PKEY_set1_RSA(privKey, rsa) != 1) //保存RSA结构体到EVP_PKEY结构体
@@ -509,6 +556,46 @@ BOOL gen_sign(BYTE * input,int sign_input_len,BYTE * sign_value, unsigned int *s
 	return TRUE;
 }
 
+
+BOOL getCertData(int userID, BYTE buf[], int *len)
+{
+	FILE *fp;
+	char certname[40];
+	memset(certname, '\0', sizeof(certname));//初始化certname,以免后面写如乱码到文件中
+
+	if (userID == 0)
+		sprintf(certname, "./cacert/cacert.pem");
+	else
+		sprintf(certname, "./cert/usercert%d.pem", userID);                //eclipse调试或运行
+
+	printf("cert file name: %s\n", certname);
+
+	fp = fopen(certname, "rb");
+	if (fp == NULL)
+	{
+		printf("reading the cert file failed!\n");
+		return FALSE;
+	}
+	*len = fread(buf, 1, 5000, fp);
+	printf("cert's length is %d\n", *len);
+	fclose(fp);
+	printf("将证书保存到缓存buffer成功!\n");
+
+	return TRUE;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 /*************************************************
 
 Function:    // fill_certificate_auth_resp_packet
@@ -522,112 +609,165 @@ Input:	     //	input---待生成签名的整个数据包(分组)
                 privKey---生成签名所使用的私钥
 Output:      //	生成签名操作结果，TRUE or FALSE
 Return:      // TRUE or FALSE
-Others:      // 注意sign_input_len字段并非整个input长度，这一点今后如果感觉不合适再修改
+Others:      //
 
 *************************************************/
 
-certificate_auth_resp fill_certificate_auth_resp_packet(certificate_auth_requ *recv_certificate_auth_requ_buffer)
+int fill_certificate_auth_resp_packet(certificate_auth_requ *recv_certificate_auth_requ_buffer,certificate_auth_resp *send_certificate_auth_resp_buffer)
 {
-	certificate_auth_resp certificate_auth_resp_buffer;    //待填充及发送的证书认证响应分组
+	//certificate_auth_resp certificate_auth_resp_buffer;    //待填充及发送的证书认证响应分组
 	EVP_PKEY *aepubKey = NULL;
-	BYTE *pTmp = NULL;
-	int aepubkeyLen;
-	int i,CertVerifyResult;
+//	BYTE *pTmp = NULL;
+//	int aepubkeyLen;
+//	int i;
+	int CertVerifyResult;
 	BYTE deraepubkey[1024];
 
 	EVP_PKEY * privKey;
-	BYTE sign_value[1024];			     //保存签名值的数组
-	unsigned int  sign_len;
 
+	BYTE cervalresasusign[1024];			     //保存ASU服务器对证书验证结果字段的签名值的数组
+	unsigned int  cervalresasusignlen;           //保存ASU服务器对证书验证结果字段的签名值数组的长度
+
+	BYTE cerauthrespasusign[1024];			     //保存ASU服务器对整个证书认证响应分组(除本字段外)的签名值的数组
+	unsigned int  cerauthrespasusignlen;         //保存ASU服务器对整个证书认证响应分组(除本字段外)的签名值数组的长度
+
+
+	BYTE cert_buffer[5000];
+	int cert_len = 0;
+
+	//2号证书文件-ae数字证书文件，
+	//今后需要根据recv_certificate_auth_requ_buffer->staasuecer.cer_identify字段值来提取证书文件的编号等信息
 	aepubKey = getpubkeyfromcert(2);
-
-
-	pTmp = deraepubkey;
-	//把证书公钥转换为DER编码的数据，以方便打印(aepubkey结构体不方便打印)
-	aepubkeyLen = i2d_PublicKey(aepubKey, &pTmp);
-	printf("ae's PublicKey is: \n");
-	for (i = 0; i < aepubkeyLen; i++)
+	if(aepubKey == NULL)
 	{
-		printf("%02x", deraepubkey[i]);
+		printf("getpubkeyfromcert.....failed!\n");
+		return FALSE;
 	}
-	printf("\n");
 
+//	//打印ae公钥，可删除-----begin------
+//	pTmp = deraepubkey;
+//	//把证书公钥转换为DER编码的数据，以方便打印(aepubkey结构体不方便打印)
+//	aepubkeyLen = i2d_PublicKey(aepubKey, &pTmp);
+//	printf("ae's PublicKey is: \n");
+//	for (i = 0; i < aepubkeyLen; i++)
+//	{
+//		printf("%02x", deraepubkey[i]);
+//	}
+//	printf("\n");
+//	//打印ae公钥，可删除--------end-------
+
+	//验证AE的签名
 	if (verify_sign((BYTE *)recv_certificate_auth_requ_buffer, sizeof(certificate_auth_requ)-sizeof(sign_attribute),recv_certificate_auth_requ_buffer->aesign.sign.data,recv_certificate_auth_requ_buffer->aesign.sign.length,aepubKey))
 	{
-		printf("验证签名正确......\n");
-		printf("%d\n",count);
-		count++;
+		printf("ASU验证AE签名正确......\n");
 		EVP_PKEY_free(aepubKey);
 	}
+	else
+		return FALSE;
 
 
+	//填充wai_packet_head
+	send_certificate_auth_resp_buffer->wai_packet_head.version = 1;
+	send_certificate_auth_resp_buffer->wai_packet_head.type = 1;
+	send_certificate_auth_resp_buffer->wai_packet_head.subtype = CERTIFICATE_AUTH_RESP;
+	send_certificate_auth_resp_buffer->wai_packet_head.reserved = 0;
+	send_certificate_auth_resp_buffer->wai_packet_head.length = sizeof(certificate_auth_resp);
+	send_certificate_auth_resp_buffer->wai_packet_head.packetnumber = 4;
+	send_certificate_auth_resp_buffer->wai_packet_head.fragmentnumber = 0;
+	send_certificate_auth_resp_buffer->wai_packet_head.identify = 0;
+
+	//填充ADDID
+	bzero((send_certificate_auth_resp_buffer->addid.mac1),sizeof(send_certificate_auth_resp_buffer->addid.mac1));
+	bzero((send_certificate_auth_resp_buffer->addid.mac2),sizeof(send_certificate_auth_resp_buffer->addid.mac2));
+
+	//填充证书验证结果字段
+	send_certificate_auth_resp_buffer->cervalidresult.type = 2; /* 证书验证结果属性类型 (2)*/
+	send_certificate_auth_resp_buffer->cervalidresult.length = sizeof(certificate_valid_result);
+	memcpy(send_certificate_auth_resp_buffer->cervalidresult.random1,recv_certificate_auth_requ_buffer->aechallenge,sizeof(recv_certificate_auth_requ_buffer->aechallenge));
+	memcpy(send_certificate_auth_resp_buffer->cervalidresult.random2,recv_certificate_auth_requ_buffer->asuechallenge,sizeof(recv_certificate_auth_requ_buffer->asuechallenge));
+
+	//验证AE和ASUE的数字证书
+	//X509_Cert_Verify(int aecertnum, int asuecertnum)
+	//aecertnum = 2;asuecertnum = 1
+	//今后需要根据recv_certificate_auth_requ_buffer->staasuecer.cer_identify字段值来提取证书文件的编号等信息
 	CertVerifyResult = X509_Cert_Verify(2,1);
-
-	if(CertVerifyResult == AE_OK_ASUE_OK)
+	//根据证书验证结果来设置send_certificate_auth_resp_buffer->cervalidresult.cerresult1和send_certificate_auth_resp_buffer->cervalidresult.cerresult2字段值
+	//证书验证结果除了有效和无效大的分类外，还应有具体的说明，这一点有待细化修改！
+	if (CertVerifyResult == AE_OK_ASUE_OK)
 	{
-		certificate_auth_resp_buffer.cervalidresult.cerresult1 = 0;   //ASUE证书验证正确有效
-		certificate_auth_resp_buffer.cervalidresult.cerresult2 = 0;   //AE证书验证正确有效
+		send_certificate_auth_resp_buffer->cervalidresult.cerresult1 = 0; //ASUE证书验证正确有效
+		send_certificate_auth_resp_buffer->cervalidresult.cerresult2 = 0; //AE证书验证正确有效
 	}
-	else if(CertVerifyResult == AE_OK_ASUE_ERROR)
+	else if (CertVerifyResult == AE_OK_ASUE_ERROR)
 	{
-		certificate_auth_resp_buffer.cervalidresult.cerresult1 = 1;   //ASUE证书验证错误无效
-		certificate_auth_resp_buffer.cervalidresult.cerresult2 = 0;   //AE证书验证正确有效
+		send_certificate_auth_resp_buffer->cervalidresult.cerresult1 = 1; //ASUE证书验证错误无效
+		send_certificate_auth_resp_buffer->cervalidresult.cerresult2 = 0; //AE证书验证正确有效
 	}
-	else if(CertVerifyResult == AE_ERROR_ASUE_OK)
+	else if (CertVerifyResult == AE_ERROR_ASUE_OK)
 	{
-		certificate_auth_resp_buffer.cervalidresult.cerresult1 = 0;   //ASUE证书验证正确有效
-		certificate_auth_resp_buffer.cervalidresult.cerresult2 = 1;   //AE证书验证错误无效
+		send_certificate_auth_resp_buffer->cervalidresult.cerresult1 = 0; //ASUE证书验证正确有效
+		send_certificate_auth_resp_buffer->cervalidresult.cerresult2 = 1; //AE证书验证错误无效
 	}
 
-	certificate_auth_resp_buffer.wai_packet_head.version = 1;
-	certificate_auth_resp_buffer.wai_packet_head.type = 1;
-	certificate_auth_resp_buffer.wai_packet_head.subtype = CERTIFICATE_AUTH_RESP;
-	certificate_auth_resp_buffer.wai_packet_head.reserved = 0;
-	certificate_auth_resp_buffer.wai_packet_head.packetnumber = 4;
-	certificate_auth_resp_buffer.wai_packet_head.fragmentnumber = 0;
-	certificate_auth_resp_buffer.wai_packet_head.identify = 0;
+	//ASU读取自己保存的证书文件夹中的ASUE证书，并与接收到的证书认证请求分组中的ASUE证书字段比对是否一致，若一致将证书认证请求分组中的ASUE证书字段复制到证书认证响应分组中的证书认证结果结构体中的相应字段
+	if (!getCertData(1, cert_buffer, &cert_len))    //先读取ASUE证书，"./newcerts/usercert1.pem"
+	{
+		printf("将ASUE证书保存到缓存buffer失败!");
+		return FALSE;
+	}
 
+	if(strcmp((char *)cert_buffer,(char *)(recv_certificate_auth_requ_buffer->staasuecer.cer_X509))== 0)
+	{
+		memcpy(&(send_certificate_auth_resp_buffer->cervalidresult.certificate1),&(recv_certificate_auth_requ_buffer->staasuecer),sizeof(certificate));
+	}
 
-	bzero((certificate_auth_resp_buffer.addid.mac1),sizeof(certificate_auth_resp_buffer.addid.mac1));
-	bzero((certificate_auth_resp_buffer.addid.mac2),sizeof(certificate_auth_resp_buffer.addid.mac2));
+	//ASU读取自己保存的证书文件夹中的AE证书，并与接收到的证书认证请求分组中的AE证书字段比对是否一致，若一致将证书认证请求分组中的AE证书字段复制到证书认证响应分组中的证书认证结果结构体中的相应字段
+	if (!getCertData(2, cert_buffer, &cert_len))    //先读取AE证书，"./newcerts/usercert2.pem"
+	{
+		printf("将AE证书保存到缓存buffer失败!");
+		return FALSE;
+	}
 
-	certificate_auth_resp_buffer.cervalidresult.type = 2; /* 证书验证结果属性类型 (2)*/
+	if(strcmp((char *)cert_buffer,(char *)(recv_certificate_auth_requ_buffer->staasuecer.cer_X509))== 0)
+	{
+		memcpy(&(send_certificate_auth_resp_buffer->cervalidresult.certificate2),&(recv_certificate_auth_requ_buffer->staaecer),sizeof(certificate));
+	}
 
-	certificate_auth_resp_buffer.cervalidresult.length = sizeof(certificate_auth_resp);
-
-	bzero((certificate_auth_resp_buffer.cervalidresult.random1),sizeof(certificate_auth_resp_buffer.cervalidresult.random1));
-	bzero((certificate_auth_resp_buffer.cervalidresult.random2),sizeof(certificate_auth_resp_buffer.cervalidresult.random2));
-
-
-	certificate_auth_resp_buffer.wai_packet_head.length = sizeof(certificate_auth_resp_buffer.wai_packet_head)+sizeof(certificate_auth_resp_buffer.addid)
-			+sizeof(certificate_auth_resp_buffer.cervalidresult)+sizeof(certificate_auth_resp_buffer.asusign);
-
-
-	//ASU使用CA的私钥(cakey.pem)来生成CA签名
-	privKey = getprivkeyfromprivkeyfile();
-	if (NULL == privKey )
+	//ASU使用CA的私钥(cakey.pem)来生成对证书验证结果字段的签名和对整个证书认证响应分组(除本字段外)的签名
+	privKey = getprivkeyfromprivkeyfile(0);         //0号密钥文件-CA(驻留在asu中)的密钥文件 "./private/cakey.pem"
+	if (NULL == privKey)
 	{
 		printf("getprivkeyitsself().....failed!\n");
 	}
-	if (!gen_sign((BYTE *)&certificate_auth_resp_buffer,certificate_auth_resp_buffer.wai_packet_head.length-sizeof(certificate_auth_resp_buffer.asusign),sign_value, &sign_len, privKey))
+
+	//ASU服务器对证书验证结果字段的签名
+	if (!gen_sign((BYTE *)&(send_certificate_auth_resp_buffer->cervalidresult),sizeof(send_certificate_auth_resp_buffer->cervalidresult),cervalresasusign, &cervalresasusignlen, privKey))
 	{
-		printf("签名失败！");
+		printf("ASU服务器对证书验证结果字段的签名失败！");
 	}
+	send_certificate_auth_resp_buffer->cervalresasusign.sign.length = cervalresasusignlen;
+	memcpy(send_certificate_auth_resp_buffer->cervalresasusign.sign.data, cervalresasusign, cervalresasusignlen);
+
+	//ASU服务器对整个证书认证响应分组(除本字段外)的签名
+	if (!gen_sign((BYTE *)send_certificate_auth_resp_buffer,send_certificate_auth_resp_buffer->wai_packet_head.length-sizeof(send_certificate_auth_resp_buffer->cerauthrespasusign),cerauthrespasusign, &cerauthrespasusignlen, privKey))
+	{
+		printf("ASU服务器对整个证书认证响应分组(除本字段外)的签名失败！");
+	}
+	send_certificate_auth_resp_buffer->cerauthrespasusign.sign.length = cerauthrespasusignlen;
+	memcpy(send_certificate_auth_resp_buffer->cerauthrespasusign.sign.data, cerauthrespasusign, cerauthrespasusignlen);
+
 	EVP_PKEY_free (privKey);
 
+	//利用全局变量count来打印ASU中的fill_certificate_auth_resp_packet函数运行的次数，该部分打印如感觉没必要可删除
+	printf("ASU中的fill_certificate_auth_resp_packet函数运行的次数为第%d次！\n",count);
+	count++;
 
-	certificate_auth_resp_buffer.asusign.sign.length = sign_len;
-	memcpy(certificate_auth_resp_buffer.asusign.sign.data, sign_value, sign_len);
-
-	return certificate_auth_resp_buffer;
+	return TRUE;
 
 }
 
 
-
-
-
-int process_request(int client_ae_socket, BYTE * recv_buffer,int recv_buffer_len)
+void process_request(int client_ae_socket, BYTE * recv_buffer,int recv_buffer_len)
 {
 	certificate_auth_resp send_certificate_auth_resp_buffer;
 
@@ -635,7 +775,6 @@ int process_request(int client_ae_socket, BYTE * recv_buffer,int recv_buffer_len
 
 	BYTE subtype;
 	BYTE send_buffer[10000];
-	int send_buffer_len;
 
 	subtype = *(recv_buffer+3);     //WAI协议分组基本格式包头的第三个字节是分组的subtype字段，用来区分不同的分组
 
@@ -646,16 +785,18 @@ int process_request(int client_ae_socket, BYTE * recv_buffer,int recv_buffer_len
 		bzero((BYTE *)&send_certificate_auth_resp_buffer,sizeof(send_certificate_auth_resp_buffer));
 		bzero((BYTE *)&recv_certificate_auth_requ_buffer,sizeof(recv_certificate_auth_requ_buffer));
 		memcpy(&recv_certificate_auth_requ_buffer,recv_buffer,sizeof(certificate_auth_requ));
-		send_certificate_auth_resp_buffer = fill_certificate_auth_resp_packet(&recv_certificate_auth_requ_buffer);
-		memcpy(send_buffer,&send_certificate_auth_resp_buffer,sizeof(certificate_auth_resp));
-		send_buffer_len = send(client_ae_socket, send_buffer,sizeof(certificate_auth_resp),0);
 
+		if(!(fill_certificate_auth_resp_packet(&recv_certificate_auth_requ_buffer,&send_certificate_auth_resp_buffer)))
+		{
+			printf("fill certificate auth resp packet failed!\n");
+		}
+		memcpy(send_buffer,&send_certificate_auth_resp_buffer,sizeof(certificate_auth_resp));
 		break;
 //	case XXX:其他case留作以后通信分组使用
 //		XXX---其他case处理语句
 //		break;
     }
-    return TRUE;
+    send_to_peer(client_ae_socket, send_buffer, sizeof(certificate_auth_resp));
 }
 
 
@@ -669,10 +810,10 @@ void * talk_to_ae(void * new_asu_server_socket_to_client_ae)
 	BYTE recv_buffer[10000];
 
 	memset(recv_buffer, 0, sizeof(recv_buffer));
-	recv_buffer_len = recv(new_asu_server_socket, recv_buffer,
-			sizeof(recv_buffer), 0);
 
-	printf("\n----------------------------------------------------------------------------------\n");
+	recv_buffer_len = recv(new_asu_server_socket, recv_buffer,sizeof(recv_buffer), 0);
+
+	printf("\n--------------------------------------------------------------------------------\n");
 
 	printf("server receive %d data from client!!!!!!!!!!!!!!!!!!!!!!!!!\n",recv_buffer_len);
 
@@ -681,7 +822,7 @@ void * talk_to_ae(void * new_asu_server_socket_to_client_ae)
 		printf("服务器接收到客户端%d字节的有效证书认证请求分组数据包\n", recv_buffer_len);
 	}
 
-	printf("************************************************************************************\n");
+	printf("********************************************************************************\n");
 
 	if (recv_buffer_len < 0)
 	{
@@ -695,10 +836,6 @@ void * talk_to_ae(void * new_asu_server_socket_to_client_ae)
 		pthread_exit(NULL);
 	}
 
-	printf("%d\n", recv_buffer[2]);
-
-	printf("%d\n", recv_buffer[3]);
-	printf("%d\n", recv_buffer[4]);
 	process_request(new_asu_server_socket, recv_buffer, recv_buffer_len);
 
 
@@ -715,12 +852,13 @@ int main(int argc, char **argv)
 	BYTE * userID;
 	OpenSSL_add_all_algorithms();
 
-//	if (argc != 3)
+	//main函数的第二个参数为演示第一部分所用，即为证书的用户名
+//	if (argc != 2)
 //	{
 //		printf("程序运行输入参数有误！");
 //		exit(1);
 //	}
-//	userID = argv[2];
+//	userID = argv[1];
 	init_user_table();
 
 	//**************************************演示清单第一部分离线证书签发等操作 begin***************************************************

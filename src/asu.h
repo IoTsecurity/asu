@@ -21,6 +21,9 @@
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/hmac.h>
+#include <openssl/sha.h>
+#include <openssl/rand.h>
 
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -85,6 +88,7 @@ typedef unsigned long  DWORD;
 #define BOOL int
 #define FALSE 0
 #define TRUE 1
+
 #define AE_OK_ASUE_OK 2     //AE和ASUE证书验证都正确
 #define AE_OK_ASUE_ERROR 3  //AE证书验证正确，ASUE证书验证错误
 #define AE_ERROR_ASUE_OK 4  //AE证书验证错误，ASUE证书验证正确
@@ -194,6 +198,13 @@ typedef struct _certificate_valid_result
     certificate      certificate2;                              /* 证书2 */
 }certificate_valid_result;
 
+/* 复合的证书验证结果 由证书认证响应分组中除ADDID外的其他各个字段组成，并且内容和它们相同*/
+typedef struct _certificate_valid_result_complex
+{
+	certificate_valid_result ae_asue_cert_valid_result;          /* ae和asue证书验证结果*/
+	sign_attribute           ae_asue_cert_valid_result_asu_sign; /* asu对ae_asue_cert_valid_result字段的签名 */
+}certificate_valid_result_complex;
+
 /* 身份列表 */
 typedef struct _identity_list
 {
@@ -224,12 +235,12 @@ typedef struct _certificate_auth_requ
 /* 证书认证响应分组 */
 typedef struct _certificate_auth_resp
 {
-	packet_head       wai_packet_head;                             /* WAI协议分组基本格式包头 */
+	packet_head                wai_packet_head;                   /* WAI协议分组基本格式包头 */
     addindex                   addid;                             /* 地址索引ADDID */
     certificate_valid_result   cervalidresult;                    /* 证书验证结果 */
-    sign_attribute             asusign;                           /* ASU服务器签名 */
+    sign_attribute             cervalresasusign;                  /* ASU服务器对证书验证结果字段的签名 */
+    sign_attribute             cerauthrespasusign;                /* ASU服务器对整个证书认证响应分组(除本字段外)的签名 */
 }certificate_auth_resp;
-
 
 /* 证书签发请求分组 */
 typedef struct _certificate_sign_requ
