@@ -24,7 +24,7 @@
 
 
 
-static int count=0;  //作用：测试asu运行fill_certificate_auth_resp_packet函数的次数
+static int count=1;  //作用：测试asu运行fill_certificate_auth_resp_packet函数的次数
 
 typedef struct user
 {
