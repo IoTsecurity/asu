@@ -54,19 +54,40 @@ Return:      // void
 Others:      // 基于c语言调用openssl的shell指令
 
 *************************************************/
+//void CA_initial()
+//{
+//	//create the directory of CA
+//	system("mkdir -p ./demoCA/newcerts/");
+//	system("mkdir -p ./demoCA/private/");
+//	system("touch ./demoCA/index.txt");
+//	system("echo 01 > ./demoCA/serial");
+//
+//	//build CA,generate CA's RSA key-pair,does not have password
+//	system("openssl genrsa -out ./demoCA/private/cakey.pem 1024");
+//	//generate CA's cert request,and self-signed certificate
+//	//system("openssl req -new -x509 -days 365 -key ./demoCA/private/cakey.pem -out ./demoCA/cacert.pem");
+//	system("openssl req -new -x509 -days 365 -key ./demoCA/private/cakey.pem -out ./demoCA/cacert.pem");
+//}
+
 void CA_initial()
 {
 	//create the directory of CA
+	printf("***********************************************\n 1) create the directory of CA (demoCA):");
 	system("mkdir -p ./demoCA/newcerts/");
 	system("mkdir -p ./demoCA/private/");
 	system("touch ./demoCA/index.txt");
 	system("echo 01 > ./demoCA/serial");
 
-	//build CA,generate CA's RSA key-pair,does not have password
-	system("openssl genrsa -out ./demoCA/private/cakey.pem 1024");
+	//build CA,generate CA's ECC key-pair,does not have password
+	printf("***********************************************\n 2) build CA,generate CA's ECC key-pair:");
+	system("openssl ecparam -out EccCAkey.pem -name prime256v1 -genkey");
 	//generate CA's cert request,and self-signed certificate
 	//system("openssl req -new -x509 -days 365 -key ./demoCA/private/cakey.pem -out ./demoCA/cacert.pem");
-	system("openssl req -new -x509 -days 365 -key ./demoCA/private/cakey.pem -out ./demoCA/cacert.pem");
+	printf("***********************************************\n 3) generate CA's cert request:");
+	system("openssl req -key EccCAkey.pem -new -out EccCAreq.pem");
+
+	printf("***********************************************\n 4) generate CA's self-signed certificate:");
+	system("openssl x509 -req -in EccCAreq.pem -signkey EccCAkey.pem -out EccCAcert.pem");
 }
 
 
@@ -83,17 +104,33 @@ Others:      // 基于c语言调用openssl的shell指令
 
 *************************************************/
 
+//void generate_keypair_and_certrequest(BYTE *userID)
+//{
+//
+//	char tempcmd[200];
+//	memset(tempcmd, '\0', sizeof(tempcmd)); //初始化buf,以免后面写入乱码到文件中
+//	//generate user's ECC key-pair,does not have password
+//	sprintf(tempcmd,"openssl genrsa -out %skey.pem 512",userID);
+//	system(tempcmd);
+//
+//	//generate user's cert request,require the value of some attributes are the same as CA
+//	sprintf(tempcmd,"openssl req -new -days 365 -key %skey.pem -out %sreq.pem",userID, userID);
+//	system(tempcmd);
+//}
+
 void generate_keypair_and_certrequest(BYTE *userID)
 {
 
 	char tempcmd[200];
 	memset(tempcmd, '\0', sizeof(tempcmd)); //初始化buf,以免后面写入乱码到文件中
-	//generate user's RSA key-pair,does not have password
-	sprintf(tempcmd,"openssl genrsa -out %skey.pem 512",userID);
+	//generate user's ECC key-pair,does not have password
+	printf("***********************************************\n 5) generate user's ECC key-pair:");
+	sprintf(tempcmd,"openssl ecparam -out Ecc%skey.pem -name prime256v1 -genkey",userID);
 	system(tempcmd);
 
 	//generate user's cert request,require the value of some attributes are the same as CA
-	sprintf(tempcmd,"openssl req -new -days 365 -key %skey.pem -out %sreq.pem",userID, userID);
+	printf("***********************************************\n 6) generate user's cert request,require the value of some attributes are the same as CA:");
+	sprintf(tempcmd,"openssl req -key Ecc%skey.pem -new -out Ecc%sreq.pem",userID, userID);
 	system(tempcmd);
 }
 
@@ -110,6 +147,28 @@ Others:      // 基于c语言调用openssl的shell指令
 
 *************************************************/
 
+//BOOL CA_sign_cert(BYTE *userID)
+//{
+//	FILE *stream;
+//	int err;
+//	char usercername[30], currentdir[50], tempstring[200];
+//	memset(usercername, '\0', sizeof(usercername)); //初始化usercername,以免后面写入乱码到文件中
+//	memset(tempstring, '\0', sizeof(tempstring)); //初始化tempstring,以免后面写入乱码到文件中
+//	memset(currentdir, '\0', sizeof(currentdir)); //初始化tempstring,以免后面写入乱码到文件中
+//	stream = popen("pwd", "r"); //get current directory
+//	fread(currentdir, sizeof(char), sizeof(currentdir), stream); //将刚刚FILE* stream的数据流读取到currentdir
+//	currentdir[strlen(currentdir) - 1] = '\0';
+//	sprintf(usercername, "%sreq.pem", userID);
+//
+//	sprintf(tempstring,"openssl ca -in %sreq.pem -out %s/demoCA/newcerts/%scert.pem",
+//			userID, currentdir, userID);     //基于c语言调用openssl的shell指令
+//
+//	err = system(tempstring);
+//	if (err < 0)
+//		return FALSE;
+//	else
+//		return TRUE;
+//}
 BOOL CA_sign_cert(BYTE *userID)
 {
 	FILE *stream;
@@ -121,18 +180,40 @@ BOOL CA_sign_cert(BYTE *userID)
 	stream = popen("pwd", "r"); //get current directory
 	fread(currentdir, sizeof(char), sizeof(currentdir), stream); //将刚刚FILE* stream的数据流读取到currentdir
 	currentdir[strlen(currentdir) - 1] = '\0';
-	sprintf(usercername, "%sreq.pem", userID);
+	sprintf(usercername, "Ecc%sreq.pem", userID);
 
-	sprintf(tempstring,"openssl ca -in %sreq.pem -out %s/demoCA/newcerts/%scert.pem",
-			userID, currentdir, userID);     //基于c语言调用openssl的shell指令
+	printf("***********************************************\n 7) CA sign the user's cert, using CA's private key:");
+	sprintf(tempstring,"openssl x509 -req -in %s -CA EccCAcert.pem -CAkey EccCAkey.pem -out %s/demoCA/newcerts/Ecc%scert.pem -CAcreateserial",
+			usercername, currentdir, userID);     //基于c语言调用openssl的shell指令
 
 	err = system(tempstring);
-	if (err < 0)
+	if (err < 0 || (err == 256))
 		return FALSE;
 	else
 		return TRUE;
 }
-
+//BOOL CA_sign_cert(BYTE *userID)
+//{
+//	FILE *stream;
+//	int err;
+//	char usercername[30], currentdir[50], tempstring[200];
+//	memset(usercername, '\0', sizeof(usercername)); //初始化usercername,以免后面写入乱码到文件中
+//	memset(tempstring, '\0', sizeof(tempstring)); //初始化tempstring,以免后面写入乱码到文件中
+//	memset(currentdir, '\0', sizeof(currentdir)); //初始化tempstring,以免后面写入乱码到文件中
+//	stream = popen("pwd", "r"); //get current directory
+//	fread(currentdir, sizeof(char), sizeof(currentdir), stream); //将刚刚FILE* stream的数据流读取到currentdir
+//	currentdir[strlen(currentdir) - 1] = '\0';
+//	sprintf(usercername, "Ecc%s.req", userID);
+//
+//	sprintf(tempstring,"openssl x509 -req -in %s -CA EccCA.pem -CAkey EccCA.key -out %s/demoCA/newcerts/Ecc%scert.pem -CAcreateserial",
+//			usercername, currentdir, userID);     //基于c语言调用openssl的shell指令
+//
+//	err = system(tempstring);
+//	if (err < 0 || (err == 256))
+//		return FALSE;
+//	else
+//		return TRUE;
+//}
 /*************************************************
 
 Function:    // init_user_table
@@ -634,6 +715,7 @@ int fill_certificate_auth_resp_packet(certificate_auth_requ *recv_certificate_au
 
 	BYTE cert_buffer[5000];
 	int cert_len = 0;
+	int aecertcheck,asuecertcheck;
 
 	//2号证书文件-ae数字证书文件，
 	//今后需要根据recv_certificate_auth_requ_buffer->staasuecer.cer_identify字段值来提取证书文件的编号等信息
@@ -686,51 +768,62 @@ int fill_certificate_auth_resp_packet(certificate_auth_requ *recv_certificate_au
 	memcpy(send_certificate_auth_resp_buffer->cervalidresult.random1,recv_certificate_auth_requ_buffer->aechallenge,sizeof(recv_certificate_auth_requ_buffer->aechallenge));
 	memcpy(send_certificate_auth_resp_buffer->cervalidresult.random2,recv_certificate_auth_requ_buffer->asuechallenge,sizeof(recv_certificate_auth_requ_buffer->asuechallenge));
 
-	//验证AE和ASUE的数字证书
-	//X509_Cert_Verify(int aecertnum, int asuecertnum)
-	//aecertnum = 2;asuecertnum = 1
-	//今后需要根据recv_certificate_auth_requ_buffer->staasuecer.cer_identify字段值来提取证书文件的编号等信息
-	CertVerifyResult = X509_Cert_Verify(2,1);
-	//根据证书验证结果来设置send_certificate_auth_resp_buffer->cervalidresult.cerresult1和send_certificate_auth_resp_buffer->cervalidresult.cerresult2字段值
-	//证书验证结果除了有效和无效大的分类外，还应有具体的说明，这一点有待细化修改！
-	if (CertVerifyResult == AE_OK_ASUE_OK)
-	{
-		send_certificate_auth_resp_buffer->cervalidresult.cerresult1 = 0; //ASUE证书验证正确有效
-		send_certificate_auth_resp_buffer->cervalidresult.cerresult2 = 0; //AE证书验证正确有效
-	}
-	else if (CertVerifyResult == AE_OK_ASUE_ERROR)
-	{
-		send_certificate_auth_resp_buffer->cervalidresult.cerresult1 = 1; //ASUE证书验证错误无效
-		send_certificate_auth_resp_buffer->cervalidresult.cerresult2 = 0; //AE证书验证正确有效
-	}
-	else if (CertVerifyResult == AE_ERROR_ASUE_OK)
-	{
-		send_certificate_auth_resp_buffer->cervalidresult.cerresult1 = 0; //ASUE证书验证正确有效
-		send_certificate_auth_resp_buffer->cervalidresult.cerresult2 = 1; //AE证书验证错误无效
-	}
-
 	//ASU读取自己保存的证书文件夹中的ASUE证书，并与接收到的证书认证请求分组中的ASUE证书字段比对是否一致，若一致将证书认证请求分组中的ASUE证书字段复制到证书认证响应分组中的证书认证结果结构体中的相应字段
+	memset(cert_buffer, 0, sizeof(cert_buffer));
 	if (!getCertData(1, cert_buffer, &cert_len))    //先读取ASUE证书，"./newcerts/usercert1.pem"
 	{
 		printf("将ASUE证书保存到缓存buffer失败!");
 		return FALSE;
 	}
 
-	if(strcmp((char *)cert_buffer,(char *)(recv_certificate_auth_requ_buffer->staasuecer.cer_X509))== 0)
+	asuecertcheck = strcmp((char *)cert_buffer,(char *)(recv_certificate_auth_requ_buffer->staasuecer.cer_X509));
+	if(asuecertcheck == 0)
 	{
 		memcpy(&(send_certificate_auth_resp_buffer->cervalidresult.certificate1),&(recv_certificate_auth_requ_buffer->staasuecer),sizeof(certificate));
 	}
 
+
 	//ASU读取自己保存的证书文件夹中的AE证书，并与接收到的证书认证请求分组中的AE证书字段比对是否一致，若一致将证书认证请求分组中的AE证书字段复制到证书认证响应分组中的证书认证结果结构体中的相应字段
+	memset(cert_buffer, 0, sizeof(cert_buffer));
 	if (!getCertData(2, cert_buffer, &cert_len))    //先读取AE证书，"./newcerts/usercert2.pem"
 	{
 		printf("将AE证书保存到缓存buffer失败!");
 		return FALSE;
 	}
 
-	if(strcmp((char *)cert_buffer,(char *)(recv_certificate_auth_requ_buffer->staasuecer.cer_X509))== 0)
+	aecertcheck = strcmp((char *)cert_buffer,(char *)(recv_certificate_auth_requ_buffer->staaecer.cer_X509));
+	if(aecertcheck == 0)
 	{
 		memcpy(&(send_certificate_auth_resp_buffer->cervalidresult.certificate2),&(recv_certificate_auth_requ_buffer->staaecer),sizeof(certificate));
+	}
+
+	if((asuecertcheck == 0)&&(aecertcheck == 0))
+	{
+		//验证AE和ASUE的数字证书
+		//X509_Cert_Verify(int aecertnum, int asuecertnum)
+		//aecertnum = 2;asuecertnum = 1
+		//今后需要根据recv_certificate_auth_requ_buffer->staasuecer.cer_identify字段值来提取证书文件的编号等信息
+		CertVerifyResult = X509_Cert_Verify(2,1);
+		//根据证书验证结果来设置send_certificate_auth_resp_buffer->cervalidresult.cerresult1和send_certificate_auth_resp_buffer->cervalidresult.cerresult2字段值
+		//证书验证结果除了有效和无效大的分类外，还应有具体的说明，这一点有待细化修改！
+		if (CertVerifyResult == AE_OK_ASUE_OK)
+		{
+			send_certificate_auth_resp_buffer->cervalidresult.cerresult1 = 0; //ASUE证书验证正确有效
+			send_certificate_auth_resp_buffer->cervalidresult.cerresult2 = 0; //AE证书验证正确有效
+		}
+	}
+	else
+	{
+		if ((asuecertcheck != 0)&&(aecertcheck == 0))
+		{
+			send_certificate_auth_resp_buffer->cervalidresult.cerresult1 = 1; //ASUE证书验证错误无效
+			send_certificate_auth_resp_buffer->cervalidresult.cerresult2 = 0; //AE证书验证正确有效
+		}
+		else if ((asuecertcheck == 0)&&(aecertcheck != 0))
+		{
+			send_certificate_auth_resp_buffer->cervalidresult.cerresult1 = 0; //ASUE证书验证正确有效
+			send_certificate_auth_resp_buffer->cervalidresult.cerresult2 = 1; //AE证书验证错误无效
+		}
 	}
 
 	//ASU使用CA的私钥(cakey.pem)来生成对证书验证结果字段的签名和对整个证书认证响应分组(除本字段外)的签名
@@ -852,14 +945,14 @@ int main(int argc, char **argv)
 	BYTE * userID;
 	OpenSSL_add_all_algorithms();
 
-	//main函数的第二个参数为演示第一部分所用，即为证书的用户名
+//	//main函数的第二个参数为演示第一部分所用，即为证书的用户名
 //	if (argc != 2)
 //	{
 //		printf("程序运行输入参数有误！");
 //		exit(1);
 //	}
 //	userID = argv[1];
-	init_user_table();
+//	init_user_table();
 
 	//**************************************演示清单第一部分离线证书签发等操作 begin***************************************************
 	//演示清单第一部分，由于2013.8.15演示的数字证书是离线生成并下载的，所以为了不耽误整体演示的时间(AE、ASUE的证书生成操作与CA证书【驻留在ASU中】类似，但是浪费时间)
