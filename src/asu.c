@@ -776,7 +776,7 @@ int fill_certificate_auth_resp_packet(certificate_auth_requ *recv_certificate_au
 		return FALSE;
 	}
 
-	asuecertcheck = strcmp((char *)cert_buffer,(char *)(recv_certificate_auth_requ_buffer->staasuecer.cer_X509));
+	asuecertcheck = strncmp((char *)cert_buffer,(char *)(recv_certificate_auth_requ_buffer->staasuecer.cer_X509),cert_len);
 	if(asuecertcheck == 0)
 	{
 		memcpy(&(send_certificate_auth_resp_buffer->cervalidresult.certificate1),&(recv_certificate_auth_requ_buffer->staasuecer),sizeof(certificate));
@@ -791,7 +791,7 @@ int fill_certificate_auth_resp_packet(certificate_auth_requ *recv_certificate_au
 		return FALSE;
 	}
 
-	aecertcheck = strcmp((char *)cert_buffer,(char *)(recv_certificate_auth_requ_buffer->staaecer.cer_X509));
+	aecertcheck = strncmp((char *)cert_buffer,(char *)(recv_certificate_auth_requ_buffer->staaecer.cer_X509),cert_len);
 	if(aecertcheck == 0)
 	{
 		memcpy(&(send_certificate_auth_resp_buffer->cervalidresult.certificate2),&(recv_certificate_auth_requ_buffer->staaecer),sizeof(certificate));
