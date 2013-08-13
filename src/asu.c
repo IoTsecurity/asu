@@ -308,14 +308,15 @@ int send_to_peer(int new_server_socket, BYTE *send_buffer, int send_len)
 
 int recv_from_peer(int new_server_socket, BYTE *recv_buffer, int recv_len)
 {
-	int length = recv(new_server_socket,recv_buffer, recv_len,0);
+	int length = recv(new_server_socket,recv_buffer, recv_len, MSG_WAITALL);
+	
 	if (length < 0)
 	{
 		printf("Receive Data From Server Failed\n");
 		return FALSE;
 	}else if(length < recv_len)
 	{
-		printf("Receive data from server less than required.\n");
+		printf("Receive data from server less than required, %d bytes.\n", length);
 		return FALSE;
 	}else if(length > recv_len)
 	{
@@ -510,6 +511,8 @@ int X509_Cert_Verify(int aecertnum, int asuecertnum)
 		return AE_ERROR_ASUE_OK;   //AE证书验证错误，ASUE证书验证正确
 	else if ((NULL!=pae) && (NULL!=pasue))
 		return AE_ERROR_ASUE_ERROR;   //AE证书验证错误，ASUE证书验证错误
+	else
+		return AE_ERROR_ASUE_ERROR;
 }
 
 /*************************************************
@@ -702,7 +705,7 @@ int fill_certificate_auth_resp_packet(certificate_auth_requ *recv_certificate_au
 //	int aepubkeyLen;
 //	int i;
 	int CertVerifyResult;
-	BYTE deraepubkey[1024];
+	//BYTE deraepubkey[1024];
 
 	EVP_PKEY * privKey;
 
@@ -776,7 +779,7 @@ int fill_certificate_auth_resp_packet(certificate_auth_requ *recv_certificate_au
 		return FALSE;
 	}
 
-	asuecertcheck = strcmp((char *)cert_buffer,(char *)(recv_certificate_auth_requ_buffer->staasuecer.cer_X509));
+	asuecertcheck = strncmp((char *)cert_buffer,(char *)(recv_certificate_auth_requ_buffer->staasuecer.cer_X509),cert_len);
 	if(asuecertcheck == 0)
 	{
 		memcpy(&(send_certificate_auth_resp_buffer->cervalidresult.certificate1),&(recv_certificate_auth_requ_buffer->staasuecer),sizeof(certificate));
@@ -791,7 +794,7 @@ int fill_certificate_auth_resp_packet(certificate_auth_requ *recv_certificate_au
 		return FALSE;
 	}
 
-	aecertcheck = strcmp((char *)cert_buffer,(char *)(recv_certificate_auth_requ_buffer->staaecer.cer_X509));
+	aecertcheck = strncmp((char *)cert_buffer,(char *)(recv_certificate_auth_requ_buffer->staaecer.cer_X509),cert_len);
 	if(aecertcheck == 0)
 	{
 		memcpy(&(send_certificate_auth_resp_buffer->cervalidresult.certificate2),&(recv_certificate_auth_requ_buffer->staaecer),sizeof(certificate));
@@ -867,7 +870,7 @@ void process_request(int client_ae_socket, BYTE * recv_buffer,int recv_buffer_le
 	certificate_auth_requ recv_certificate_auth_requ_buffer;
 
 	BYTE subtype;
-	BYTE send_buffer[10000];
+	BYTE send_buffer[15000];
 
 	subtype = *(recv_buffer+3);     //WAI协议分组基本格式包头的第三个字节是分组的subtype字段，用来区分不同的分组
 
@@ -900,22 +903,26 @@ void * talk_to_ae(void * new_asu_server_socket_to_client_ae)
 	int new_asu_server_socket = (int)new_asu_server_socket_to_client_ae;
 
 
-	BYTE recv_buffer[10000];
+	BYTE recv_buffer[15000];
 
 	memset(recv_buffer, 0, sizeof(recv_buffer));
 
-	recv_buffer_len = recv(new_asu_server_socket, recv_buffer,sizeof(recv_buffer), 0);
+	printf("sizeof(certificate_auth_requ)=%d\n",sizeof(certificate_auth_requ));
+	recv_buffer_len = recv_from_peer(new_asu_server_socket,recv_buffer,sizeof(certificate_auth_requ));
+	
+	//recv_buffer_len = recv(new_asu_server_socket, recv_buffer,sizeof(recv_buffer), 0);//MSG_WAITALL
 
-	printf("\n--------------------------------------------------------------------------------\n");
+	printf("\n-----------------\n");
+/*
 
-	printf("server receive %d data from client!!!!!!!!!!!!!!!!!!!!!!!!!\n",recv_buffer_len);
+	printf("server receive %d data from client!!!!!!!\n",recv_buffer_len);
 
 	if (recv_buffer_len == 9586)
 	{
 		printf("服务器接收到客户端%d字节的有效证书认证请求分组数据包\n", recv_buffer_len);
 	}
-
-	printf("********************************************************************************\n");
+*/
+	printf("*******************\n");
 
 	if (recv_buffer_len < 0)
 	{
@@ -942,7 +949,7 @@ void * talk_to_ae(void * new_asu_server_socket_to_client_ae)
 
 int main(int argc, char **argv)
 {
-	BYTE * userID;
+	//BYTE * userID;
 	OpenSSL_add_all_algorithms();
 
 //	//main函数的第二个参数为演示第一部分所用，即为证书的用户名
@@ -990,4 +997,5 @@ int main(int argc, char **argv)
 			printf("pthread_create Failed : %s\n", strerror(errno));
 	}
    //**************************************演示清单第二部分WAPI的WAI认证过程演示 end***************************************************
+   return 0;
 }
