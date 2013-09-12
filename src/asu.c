@@ -865,34 +865,53 @@ int fill_certificate_auth_resp_packet(certificate_auth_requ *recv_certificate_au
 
 void process_request(int client_ae_socket, BYTE * recv_buffer,int recv_buffer_len)
 {
-	certificate_auth_resp send_certificate_auth_resp_buffer;
+//	certificate_auth_resp send_certificate_auth_resp_buffer;
 
-	certificate_auth_requ recv_certificate_auth_requ_buffer;
+//	certificate_auth_requ recv_certificate_auth_requ_buffer;
+	
+	EAP_certificate_auth_resp send_eap_certificate_auth_resp;  //New code
+	EAP_certificate_auth_requ recv_eap_certificate_auth_requ;//New code
+
 
 	BYTE subtype;
 	BYTE send_buffer[15000];
 
 	subtype = *(recv_buffer+3);     //WAI协议分组基本格式包头的第三个字节是分组的subtype字段，用来区分不同的分组
 
-
     switch(subtype)
     {
 	case CERTIFICATE_AUTH_REQU:
-		bzero((BYTE *)&send_certificate_auth_resp_buffer,sizeof(send_certificate_auth_resp_buffer));
-		bzero((BYTE *)&recv_certificate_auth_requ_buffer,sizeof(recv_certificate_auth_requ_buffer));
-		memcpy(&recv_certificate_auth_requ_buffer,recv_buffer,sizeof(certificate_auth_requ));
+		//bzero((BYTE *)&send_certificate_auth_resp_buffer,sizeof(send_certificate_auth_resp_buffer));
+		//bzero((BYTE *)&recv_certificate_auth_requ_buffer,sizeof(recv_certificate_auth_requ_buffer));
+		//memcpy(&recv_certificate_auth_requ_buffer,recv_buffer,sizeof(certificate_auth_requ));
+		
+		send_eap_certificate_auth_resp.eap_header.code=2;//New code
+		send_eap_certificate_auth_resp.eap_header.identifier=2;
+		send_eap_certificate_auth_resp.eap_header.length=sizeof(send_eap_certificate_auth_resp);//New code
+		send_eap_certificate_auth_resp.eap_header.type=192;//New code
+		
+		bzero((BYTE *)&send_EAP_certificate_auth_resp,sizeof(send_EAP_certificate_auth_resp));//New code
+		memcpy(&recv_eap_certificate_auth_requ,recv_buffer,sizeof(recv_eap_certificate_auth_requ));//New code	
 
-		if(!(fill_certificate_auth_resp_packet(&recv_certificate_auth_requ_buffer,&send_certificate_auth_resp_buffer)))
+		//if(!(fill_certificate_auth_resp_packet(&recv_certificate_auth_requ_buffer,&send_certificate_auth_resp_buffer)))
+		//{
+		//	printf("fill certificate auth resp packet failed!\n");
+		//}
+
+		if(!(fill_certificate_auth_resp_packet(&recv_eap_certificate_auth_requ.certificate_auth_requ_packet,&send_eap_certificate_auth_resp.certificate_auth_resp_packet)))//New code
 		{
 			printf("fill certificate auth resp packet failed!\n");
 		}
-		memcpy(send_buffer,&send_certificate_auth_resp_buffer,sizeof(certificate_auth_resp));
+		
+		//memcpy(send_buffer,&send_certificate_auth_resp_buffer,sizeof(certificate_auth_resp));
+		memcpy(send_buffer,&send_eap_certificate_auth_resp,sizeof(EAP_certificate_auth_resp));//New code
 		break;
 //	case XXX:其他case留作以后通信分组使用
 //		XXX---其他case处理语句
 //		break;
     }
-    send_to_peer(client_ae_socket, send_buffer, sizeof(certificate_auth_resp));
+    //send_to_peer(client_ae_socket, send_buffer, sizeof(certificate_auth_resp));
+	send_to_peer(client_ae_socket, send_buffer, sizeof(EAP_certificate_auth_resp));
 }
 
 

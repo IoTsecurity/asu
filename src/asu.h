@@ -216,6 +216,15 @@ typedef struct _identity_list
     identity     identityset[MAX_IDENTITY_NUMBER];          /* 身份列表 */
 }identity_list;
 
+/* New code */
+/* EAP header */
+typedef struct _EAP_header
+{
+	BYTE code;
+	BYTE identifier;
+	WORD length;
+	BYTE type;
+}EAP_header;
 
 /************************************************************
 *WAI认证协议于认证服务器直接相关的证书认证请求分组和证书认证响应分组
@@ -232,6 +241,14 @@ typedef struct _certificate_auth_requ
     sign_attribute    aesign;                                      /* AE的签名 */
 }certificate_auth_requ;
 
+/* New code */
+/* The EAP format of _certificate_auth_requ */
+typedef struct _EAP_certificate_auth_requ
+{
+	EAP_header eap_header;
+	certificate_auth_requ certificate_auth_requ_packet;
+}EAP_certificate_auth_requ;
+
 /* 证书认证响应分组 */
 typedef struct _certificate_auth_resp
 {
@@ -241,6 +258,14 @@ typedef struct _certificate_auth_resp
     sign_attribute             cervalresasusign;                  /* ASU服务器对证书验证结果字段的签名 */
     sign_attribute             cerauthrespasusign;                /* ASU服务器对整个证书认证响应分组(除本字段外)的签名 */
 }certificate_auth_resp;
+
+/* New code */
+/* The EAP format of _certificate_auth_requ */
+typedef struct _EAP_certificate_auth_resp
+{
+	EAP_header eap_header;
+	certificate_auth_resp certificate_auth_resp_packet;
+}EAP_certificate_auth_resp;
 
 /* 证书签发请求分组 */
 typedef struct _certificate_sign_requ
