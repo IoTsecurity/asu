@@ -842,6 +842,10 @@ int fill_certificate_auth_resp_packet(certificate_auth_requ *recv_certificate_au
 		printf("ASU服务器对证书验证结果字段的签名失败！");
 	}
 	send_certificate_auth_resp_buffer->cervalresasusign.sign.length = cervalresasusignlen;
+
+	////////////////////////////////////////////////////////???
+	printf("length=%d\n",send_certificate_auth_resp_buffer->cervalresasusign.sign.length);
+		
 	memcpy(send_certificate_auth_resp_buffer->cervalresasusign.sign.data, cervalresasusign, cervalresasusignlen);
 
 	//ASU服务器对整个证书认证响应分组(除本字段外)的签名
@@ -876,7 +880,8 @@ void process_request(int client_ae_socket, BYTE * recv_buffer,int recv_buffer_le
 	BYTE subtype;
 	BYTE send_buffer[15000];
 
-	subtype = *(recv_buffer+3);     //WAI协议分组基本格式包头的第三个字节是分组的subtype字段，用来区分不同的分组
+	subtype = *(recv_buffer+sizeof(EAP_header)+3);     //WAI协议分组基本格式包头的第三个字节是分组的subtype字段，用来区分不同的分组
+	memcpy(&recv_eap_certificate_auth_requ,recv_buffer,sizeof(recv_eap_certificate_auth_requ));//New code	
 
     switch(subtype)
     {
@@ -884,14 +889,12 @@ void process_request(int client_ae_socket, BYTE * recv_buffer,int recv_buffer_le
 		//bzero((BYTE *)&send_certificate_auth_resp_buffer,sizeof(send_certificate_auth_resp_buffer));
 		//bzero((BYTE *)&recv_certificate_auth_requ_buffer,sizeof(recv_certificate_auth_requ_buffer));
 		//memcpy(&recv_certificate_auth_requ_buffer,recv_buffer,sizeof(certificate_auth_requ));
+		bzero((BYTE *)&send_eap_certificate_auth_resp,sizeof(send_eap_certificate_auth_resp));//New code
 		
 		send_eap_certificate_auth_resp.eap_header.code=2;//New code
 		send_eap_certificate_auth_resp.eap_header.identifier=2;
 		send_eap_certificate_auth_resp.eap_header.length=sizeof(send_eap_certificate_auth_resp);//New code
 		send_eap_certificate_auth_resp.eap_header.type=192;//New code
-		
-		bzero((BYTE *)&send_EAP_certificate_auth_resp,sizeof(send_EAP_certificate_auth_resp));//New code
-		memcpy(&recv_eap_certificate_auth_requ,recv_buffer,sizeof(recv_eap_certificate_auth_requ));//New code	
 
 		//if(!(fill_certificate_auth_resp_packet(&recv_certificate_auth_requ_buffer,&send_certificate_auth_resp_buffer)))
 		//{
@@ -900,8 +903,10 @@ void process_request(int client_ae_socket, BYTE * recv_buffer,int recv_buffer_le
 
 		if(!(fill_certificate_auth_resp_packet(&recv_eap_certificate_auth_requ.certificate_auth_requ_packet,&send_eap_certificate_auth_resp.certificate_auth_resp_packet)))//New code
 		{
-			printf("fill certificate auth resp packet failed!\n");
+				printf("fill certificate auth resp packet failed!\n");
 		}
+		////////////////////////////////////////////////////////???
+		printf("length=%d\n",send_eap_certificate_auth_resp.certificate_auth_resp_packet.cervalresasusign.sign.length);
 		
 		//memcpy(send_buffer,&send_certificate_auth_resp_buffer,sizeof(certificate_auth_resp));
 		memcpy(send_buffer,&send_eap_certificate_auth_resp,sizeof(EAP_certificate_auth_resp));//New code
@@ -927,7 +932,7 @@ void * talk_to_ae(void * new_asu_server_socket_to_client_ae)
 	memset(recv_buffer, 0, sizeof(recv_buffer));
 
 	printf("sizeof(certificate_auth_requ)=%d\n",sizeof(certificate_auth_requ));
-	recv_buffer_len = recv_from_peer(new_asu_server_socket,recv_buffer,sizeof(certificate_auth_requ));
+	recv_buffer_len = recv_from_peer(new_asu_server_socket,recv_buffer,sizeof(EAP_certificate_auth_requ));
 	
 	//recv_buffer_len = recv(new_asu_server_socket, recv_buffer,sizeof(recv_buffer), 0);//MSG_WAITALL
 
@@ -956,8 +961,6 @@ void * talk_to_ae(void * new_asu_server_socket_to_client_ae)
 	}
 
 	process_request(new_asu_server_socket, recv_buffer, recv_buffer_len);
-
-
 
 	close(new_asu_server_socket);
 	pthread_exit(NULL);
