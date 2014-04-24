@@ -33,13 +33,13 @@ src/asu.d src/asu.o: ../src/asu.c ../src/asu.h \
  /usr/local/openssl/include/openssl/kssl.h \
  /usr/local/openssl/include/openssl/ssl2.h \
  /usr/local/openssl/include/openssl/ssl3.h \
- /usr/local/openssl/include/openssl/pq_compat.h \
  /usr/local/openssl/include/openssl/tls1.h \
  /usr/local/openssl/include/openssl/dtls1.h \
  /usr/local/openssl/include/openssl/pqueue.h \
  /usr/local/openssl/include/openssl/ssl23.h \
+ /usr/local/openssl/include/openssl/srtp.h \
  /usr/local/openssl/include/openssl/err.h \
- /usr/local/openssl/include/openssl/rand.h
+ /usr/local/openssl/include/openssl/rand.h ../src/logtest.h
 
 ../src/asu.h:
 
@@ -111,8 +111,6 @@ src/asu.d src/asu.o: ../src/asu.c ../src/asu.h \
 
 /usr/local/openssl/include/openssl/ssl3.h:
 
-/usr/local/openssl/include/openssl/pq_compat.h:
-
 /usr/local/openssl/include/openssl/tls1.h:
 
 /usr/local/openssl/include/openssl/dtls1.h:
@@ -121,6 +119,10 @@ src/asu.d src/asu.o: ../src/asu.c ../src/asu.h \
 
 /usr/local/openssl/include/openssl/ssl23.h:
 
+/usr/local/openssl/include/openssl/srtp.h:
+
 /usr/local/openssl/include/openssl/err.h:
 
 /usr/local/openssl/include/openssl/rand.h:
+
+../src/logtest.h:

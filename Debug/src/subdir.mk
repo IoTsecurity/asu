@@ -3,14 +3,20 @@
 ################################################################################
 
 # Add inputs and outputs from these tool invocations to the build variables 
+O_SRCS += \
+../src/logtest.o 
+
 C_SRCS += \
-../src/asu.c 
+../src/asu.c \
+../src/logtest.c 
 
 OBJS += \
-./src/asu.o 
+./src/asu.o \
+./src/logtest.o 
 
 C_DEPS += \
-./src/asu.d 
+./src/asu.d \
+./src/logtest.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

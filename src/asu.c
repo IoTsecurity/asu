@@ -9,6 +9,7 @@
  */
 
 #include "asu.h"
+#include "logtest.h"
 
 ///* define HOME to be dir for key and cert files... */
 //#define HOME "./"
